@@ -634,22 +634,11 @@ diff_match_patch.prototype.diff_commonOverlap_ = function(text1, text2) {
  *     text2 and the common middle.  Or null if there was no match.
  * @private
  */
-diff_match_patch.prototype.diff_halfMatch_ = function(text1, text2) {
-  if (this.Diff_Timeout <= 0) {
-    // Don't risk returning a non-optimal diff if we have unlimited time.
-    return null;
-  }
-  var longtext = text1.length > text2.length ? text1 : text2;
-  var shorttext = text1.length > text2.length ? text2 : text1;
-  if (longtext.length < 4 || shorttext.length * 2 < longtext.length) {
-    return null;  // Pointless.
-  }
-  var dmp = this;  // 'this' becomes 'window' in a closure.
-
+diff_match_patch.prototype.diff_halfMatch_ = (function() {
   /**
    * Does a substring of shorttext exist within longtext such that the substring
    * is at least half the length of longtext?
-   * Closure, but does not reference any external variables.
+   * Does not reference any external variables.
    * @param {string} longtext Longer string.
    * @param {string} shorttext Shorter string.
    * @param {number} i Start index of quarter length substring within longtext.
@@ -658,7 +647,7 @@ diff_match_patch.prototype.diff_halfMatch_ = function(text1, text2) {
    *     of shorttext and the common middle.  Or null if there was no match.
    * @private
    */
-  function diff_halfMatchI_(longtext, shorttext, i) {
+  function diff_halfMatchI_(dmp, longtext, shorttext, i) {
     // Start with a 1/4 length substring at position i as a seed.
     var seed = longtext.substring(i, i + Math.floor(longtext.length / 4));
     var j = -1;
@@ -686,40 +675,53 @@ diff_match_patch.prototype.diff_halfMatch_ = function(text1, text2) {
     }
   }
 
-  // First check if the second quarter is the seed for a half-match.
-  var hm1 = diff_halfMatchI_(longtext, shorttext,
-                             Math.ceil(longtext.length / 4));
-  // Check again based on the third quarter.
-  var hm2 = diff_halfMatchI_(longtext, shorttext,
-                             Math.ceil(longtext.length / 2));
-  var hm;
-  if (!hm1 && !hm2) {
-    return null;
-  } else if (!hm2) {
-    hm = hm1;
-  } else if (!hm1) {
-    hm = hm2;
-  } else {
-    // Both matched.  Select the longest.
-    hm = hm1[4].length > hm2[4].length ? hm1 : hm2;
-  }
+  return function(text1, text2) {
+    if (this.Diff_Timeout <= 0) {
+      // Don't risk returning a non-optimal diff if we have unlimited time.
+      return null;
+    }
+    var longtext = text1.length > text2.length ? text1 : text2;
+    var shorttext = text1.length > text2.length ? text2 : text1;
+    if (longtext.length < 4 || shorttext.length * 2 < longtext.length) {
+      return null;  // Pointless.
+    }
+    var dmp = this;  // 'this' becomes 'window' in a closure.
 
-  // A half-match was found, sort out the return data.
-  var text1_a, text1_b, text2_a, text2_b;
-  if (text1.length > text2.length) {
-    text1_a = hm[0];
-    text1_b = hm[1];
-    text2_a = hm[2];
-    text2_b = hm[3];
-  } else {
-    text2_a = hm[0];
-    text2_b = hm[1];
-    text1_a = hm[2];
-    text1_b = hm[3];
-  }
-  var mid_common = hm[4];
-  return [text1_a, text1_b, text2_a, text2_b, mid_common];
-};
+    // First check if the second quarter is the seed for a half-match.
+    var hm1 = diff_halfMatchI_(dmp, longtext, shorttext,
+                               Math.ceil(longtext.length / 4));
+    // Check again based on the third quarter.
+    var hm2 = diff_halfMatchI_(dmp, longtext, shorttext,
+                               Math.ceil(longtext.length / 2));
+    var hm;
+    if (!hm1 && !hm2) {
+      return null;
+    } else if (!hm2) {
+      hm = hm1;
+    } else if (!hm1) {
+      hm = hm2;
+    } else {
+      // Both matched.  Select the longest.
+      hm = hm1[4].length > hm2[4].length ? hm1 : hm2;
+    }
+
+    // A half-match was found, sort out the return data.
+    var text1_a, text1_b, text2_a, text2_b;
+    if (text1.length > text2.length) {
+      text1_a = hm[0];
+      text1_b = hm[1];
+      text2_a = hm[2];
+      text2_b = hm[3];
+    } else {
+      text2_a = hm[0];
+      text2_b = hm[1];
+      text1_a = hm[2];
+      text1_b = hm[3];
+    }
+    var mid_common = hm[4];
+    return [text1_a, text1_b, text2_a, text2_b, mid_common];
+  };
+})();
 
 
 /**
@@ -841,12 +843,12 @@ diff_match_patch.prototype.diff_cleanupSemantic = function(diffs) {
  * e.g: The c<ins>at c</ins>ame. -> The <ins>cat </ins>came.
  * @param {!Array.<!diff_match_patch.Diff>} diffs Array of diff tuples.
  */
-diff_match_patch.prototype.diff_cleanupSemanticLossless = function(diffs) {
+diff_match_patch.prototype.diff_cleanupSemanticLossless = (function() {
   /**
    * Given two strings, compute a score representing whether the internal
    * boundary falls on logical boundaries.
    * Scores range from 6 (best) to 0 (worst).
-   * Closure, but does not reference any external variables.
+   * Does not reference any external variables.
    * @param {string} one First string.
    * @param {string} two Second string.
    * @return {number} The score.
@@ -899,66 +901,68 @@ diff_match_patch.prototype.diff_cleanupSemanticLossless = function(diffs) {
     return 0;
   }
 
-  var pointer = 1;
-  // Intentionally ignore the first and last element (don't need checking).
-  while (pointer < diffs.length - 1) {
-    if (diffs[pointer - 1][0] == DIFF_EQUAL &&
-        diffs[pointer + 1][0] == DIFF_EQUAL) {
-      // This is a single edit surrounded by equalities.
-      var equality1 = diffs[pointer - 1][1];
-      var edit = diffs[pointer][1];
-      var equality2 = diffs[pointer + 1][1];
+  return function(diffs) {
+    var pointer = 1;
+    // Intentionally ignore the first and last element (don't need checking).
+    while (pointer < diffs.length - 1) {
+      if (diffs[pointer - 1][0] == DIFF_EQUAL &&
+          diffs[pointer + 1][0] == DIFF_EQUAL) {
+        // This is a single edit surrounded by equalities.
+        var equality1 = diffs[pointer - 1][1];
+        var edit = diffs[pointer][1];
+        var equality2 = diffs[pointer + 1][1];
 
-      // First, shift the edit as far left as possible.
-      var commonOffset = this.diff_commonSuffix(equality1, edit);
-      if (commonOffset) {
-        var commonString = edit.substring(edit.length - commonOffset);
-        equality1 = equality1.substring(0, equality1.length - commonOffset);
-        edit = commonString + edit.substring(0, edit.length - commonOffset);
-        equality2 = commonString + equality2;
-      }
+        // First, shift the edit as far left as possible.
+        var commonOffset = this.diff_commonSuffix(equality1, edit);
+        if (commonOffset) {
+          var commonString = edit.substring(edit.length - commonOffset);
+          equality1 = equality1.substring(0, equality1.length - commonOffset);
+          edit = commonString + edit.substring(0, edit.length - commonOffset);
+          equality2 = commonString + equality2;
+        }
 
-      // Second, step character by character right, looking for the best fit.
-      var bestEquality1 = equality1;
-      var bestEdit = edit;
-      var bestEquality2 = equality2;
-      var bestScore = diff_cleanupSemanticScore_(equality1, edit) +
-          diff_cleanupSemanticScore_(edit, equality2);
-      while (edit.charAt(0) === equality2.charAt(0)) {
-        equality1 += edit.charAt(0);
-        edit = edit.substring(1) + equality2.charAt(0);
-        equality2 = equality2.substring(1);
-        var score = diff_cleanupSemanticScore_(equality1, edit) +
+        // Second, step character by character right, looking for the best fit.
+        var bestEquality1 = equality1;
+        var bestEdit = edit;
+        var bestEquality2 = equality2;
+        var bestScore = diff_cleanupSemanticScore_(equality1, edit) +
             diff_cleanupSemanticScore_(edit, equality2);
-        // The >= encourages trailing rather than leading whitespace on edits.
-        if (score >= bestScore) {
-          bestScore = score;
-          bestEquality1 = equality1;
-          bestEdit = edit;
-          bestEquality2 = equality2;
+        while (edit.charAt(0) === equality2.charAt(0)) {
+          equality1 += edit.charAt(0);
+          edit = edit.substring(1) + equality2.charAt(0);
+          equality2 = equality2.substring(1);
+          var score = diff_cleanupSemanticScore_(equality1, edit) +
+              diff_cleanupSemanticScore_(edit, equality2);
+          // The >= encourages trailing rather than leading whitespace on edits.
+          if (score >= bestScore) {
+            bestScore = score;
+            bestEquality1 = equality1;
+            bestEdit = edit;
+            bestEquality2 = equality2;
+          }
         }
-      }
 
-      if (diffs[pointer - 1][1] != bestEquality1) {
-        // We have an improvement, save it back to the diff.
-        if (bestEquality1) {
-          diffs[pointer - 1][1] = bestEquality1;
-        } else {
-          diffs.splice(pointer - 1, 1);
-          pointer--;
-        }
-        diffs[pointer][1] = bestEdit;
-        if (bestEquality2) {
-          diffs[pointer + 1][1] = bestEquality2;
-        } else {
-          diffs.splice(pointer + 1, 1);
-          pointer--;
+        if (diffs[pointer - 1][1] != bestEquality1) {
+          // We have an improvement, save it back to the diff.
+          if (bestEquality1) {
+            diffs[pointer - 1][1] = bestEquality1;
+          } else {
+            diffs.splice(pointer - 1, 1);
+            pointer--;
+          }
+          diffs[pointer][1] = bestEdit;
+          if (bestEquality2) {
+            diffs[pointer + 1][1] = bestEquality2;
+          } else {
+            diffs.splice(pointer + 1, 1);
+            pointer--;
+          }
         }
       }
+      pointer++;
     }
-    pointer++;
-  }
-};
+  };
+})();
 
 // Define some regex patterns for matching boundaries.
 diff_match_patch.nonAlphaNumericRegex_ = /[^a-zA-Z0-9]/;
