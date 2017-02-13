@@ -1,0 +1,12 @@
+{
+  "name": "google-diff-match-patch",
+  "homepage": "https://github.com/Daniel-Hug/google-diff-match-patch",
+  "license": "Apache 2.0",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
