@@ -67,9 +67,6 @@ var DIFF_DELETE = -1;
 var DIFF_INSERT = 1;
 var DIFF_EQUAL = 0;
 
-/** @typedef {{0: number, 1: string}} */
-diff_match_patch.Diff;
-
 
 /**
  * Find the differences between two texts.  Simplifies the problem by stripping
@@ -1663,8 +1660,8 @@ diff_match_patch.prototype.patch_make = function(a, opt_b, opt_c) {
       typeof opt_c == 'undefined') {
     // Method 1: text1, text2
     // Compute diffs from text1 and text2.
-    text1 = /** @type {string} */(a);
-    diffs = this.diff_main(text1, /** @type {string} */(opt_b), true);
+    text1 = /** @type {string} */a;
+    diffs = this.diff_main(text1, /** @type {string} */opt_b, true);
     if (diffs.length > 2) {
       this.diff_cleanupSemantic(diffs);
       this.diff_cleanupEfficiency(diffs);
@@ -1673,19 +1670,19 @@ diff_match_patch.prototype.patch_make = function(a, opt_b, opt_c) {
       typeof opt_c == 'undefined') {
     // Method 2: diffs
     // Compute text1 from diffs.
-    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */(a);
+    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */a;
     text1 = this.diff_text1(diffs);
   } else if (typeof a == 'string' && opt_b && typeof opt_b == 'object' &&
       typeof opt_c == 'undefined') {
     // Method 3: text1, diffs
-    text1 = /** @type {string} */(a);
-    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */(opt_b);
+    text1 = /** @type {string} */a;
+    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */opt_b;
   } else if (typeof a == 'string' && typeof opt_b == 'string' &&
       opt_c && typeof opt_c == 'object') {
     // Method 4: text1, text2, diffs
     // text2 is not used.
-    text1 = /** @type {string} */(a);
-    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */(opt_c);
+    text1 = /** @type {string} */a;
+    diffs = /** @type {!Array.<!diff_match_patch.Diff>} */opt_c;
   } else {
     throw new Error('Unknown call format to patch_make.');
   }
