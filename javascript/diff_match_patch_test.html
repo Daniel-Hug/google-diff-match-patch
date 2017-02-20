@@ -81,7 +81,7 @@
       function runTests() {
         for (var x = 0; x < tests.length; x++) {
           document.write('<H3>' + tests[x] + ':</H3>');
-          eval(tests[x] + '()');
+          window[tests[x]]();
         }
       }
 

@@ -414,7 +414,7 @@ function testDiffCleanupEfficiency() {
 function testDiffPrettyHtml() {
   // Pretty print.
   var diffs = [[DIFF_EQUAL, 'a\n'], [DIFF_DELETE, '<B>b</B>'], [DIFF_INSERT, 'c&d']];
-  assertEquals('<span>a&para;<br></span><del style="background:#ffe6e6;">&lt;B&gt;b&lt;/B&gt;</del><ins style="background:#e6ffe6;">c&amp;d</ins>', dmp.diff_prettyHtml(diffs));
+  assertEquals('<span>a&para;<br></span><del>&lt;B&gt;b&lt;/B&gt;</del><ins>c&amp;d</ins>', dmp.diff_prettyHtml(diffs));
 }
 
 function testDiffText() {
