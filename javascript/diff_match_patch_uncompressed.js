@@ -443,18 +443,33 @@ diff_match_patch.prototype.diff_bisectSplit_ = function(text1, text2, x, y,
       return indexInSuffix < 0 ? indexInSuffix : indexInSuffix + i;
   }
 
-  var DELIMITERS = {
-    lines: /\n/,
-    words: /[\W]+/
+  var findDelimeterFunctions = {
+    lines: function(text, lineStart) {
+      return regexIndexOf(text, /\n/, lineStart);
+    },
+    words: function(text, lineStart) {
+      // If first character of word is whitespace, the last will be:
+      if (text.charAt(lineStart).match(/\s/)) {
+        // the first character that is followed by non-whitespace
+        return regexIndexOf(text, /[\s\S]\S/, lineStart);
+      // If first character of word is punctuation, the last will be:
+      } else if (text.charAt(lineStart).match(/[^\w'-\s]/)) {
+        // the same character
+        return lineStart;
+      } else {
+        // otherwise, the first whitespace or a non-whitespace if followed by punctuation
+        return regexIndexOf(text, /\s|\S[^\w'-\s]/, lineStart);
+      }
+    }
   };
 
-  for (var name in DELIMITERS) {
-    if (!DELIMITERS.hasOwnProperty(name)) continue;
+  for (var name in findDelimeterFunctions) {
+    if (!findDelimeterFunctions.hasOwnProperty(name)) continue;
     var method = 'diff_' + name + 'ToChars_';
-    diff_match_patch.prototype[method] = composeToCharsFn(DELIMITERS[name]);
+    diff_match_patch.prototype[method] = composeToCharsFn(findDelimeterFunctions[name]);
   }
 
-  function composeToCharsFn(re) {
+  function composeToCharsFn(findDelimeter) {
     return function(text1, text2) {
       var lineArray = [];  // e.g. lineArray[4] == 'Hello\n'
       var lineHash = {};   // e.g. lineHash['Hello\n'] == 4
@@ -481,7 +496,7 @@ diff_match_patch.prototype.diff_bisectSplit_ = function(text1, text2, x, y,
         // Keeping our own length variable is faster than looking it up.
         var lineArrayLength = lineArray.length;
         while (lineEnd < text.length - 1) {
-          lineEnd = regexIndexOf(text, re, lineStart);
+          lineEnd = findDelimeter(text, lineStart);
           if (lineEnd == -1) {
             lineEnd = text.length - 1;
           }
